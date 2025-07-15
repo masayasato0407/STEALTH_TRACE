@@ -22,7 +22,7 @@ def load_model():
     # repo_idには、ステップ1で確認した「あなたのユーザー名/リポジトリ名」を正確に入力してください。
     # filenameには、アップロードしたモデルファイル名を入力します。
     model_path = hf_hub_download(
-        repo_id="YOUR_USERNAME/YOUR_REPO_NAME",  # 例: "TaroYamada/stealth-trace-model"
+        repo_id="satom/stealth-trace-model",  # 例: "TaroYamada/stealth-trace-model"
         filename="rsfmodel.sav"
     )
     
