@@ -1,4 +1,7 @@
 import streamlit as st
+import sksurv
+from sksurv.linear_model import CoxPHSurvivalAnalysis
+from sksurv.linear_model.coxph import BreslowEstimator
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,28 +35,31 @@ st.title('Prediction model for SLD-HCC (STEALTH-TRACE model)')
 st.markdown("Enter the following items to display the predicted HCC risk")
 
 with st.form('user_inputs'): 
-    age = st.number_input('Age (years)', min_value=18, max_value=100, value=60) 
-    height = st.number_input('Height (cm)', min_value=100.0, max_value=300.0, value=170.0) 
-    weight = st.number_input('Body weight (kg)', min_value=20.0, max_value=300.0, value=70.0)     
-    PLT = st.number_input('Platelet count (×10^4/µL)', min_value=1.0, max_value=75.0, value=15.0)
-    ALB = st.number_input('Albumin (g/dL)', min_value=1.0, max_value=7.0, value=4.0) 
-    AST = st.number_input('AST (IU/L)', min_value=1, max_value=500, value=30)
-    ALT = st.number_input('ALT (IU/L)', min_value=1, max_value=500, value=30)
-    GGT = st.number_input('γ-GTP (IU/L)', min_value=1, max_value=1000, value=50)
+    age = st.number_input('Age (years)', min_value=18, max_value=100) 
+    height = st.number_input('Height (cm)', min_value=100.0, max_value=300.0) 
+    weight = st.number_input('Body weight (kg)', min_value=20.0, max_value=300.0)     
+    PLT = st.number_input('Platelet count (×10^4/µL)', min_value=1.0, max_value=75.0)
+    ALB = st.number_input('Albumin (g/dL)', min_value=1.0, max_value=7.0) 
+    AST = st.number_input('AST (IU/L)', min_value=1, max_value=500)
+    ALT = st.number_input('ALT (IU/L)', min_value=1, max_value=500)
+    GGT = st.number_input('γ-GTP (IU/L)', min_value=1, max_value=1000)
     submitted = st.form_submit_button('Predict') 
 
 if submitted:
-    BMI = (weight / (height/100)**2)
+    height2 = height * height
+    BMI0 = weight / height2
+    BMI = BMI0 * 10000
     
-    X = pd.DataFrame({
-        'age': [age],
-        'BMI': [BMI],
-        'ALB': [ALB],
-        'AST': [AST],
-        'ALT': [ALT],
-        'GGT': [GGT],
-        'PLT': [PLT]
-    })
+    X = pd.DataFrame(
+        data={'age': [age],
+              'BMI': [BMI],
+              'ALB': [ALB],
+              'AST': [AST],
+              'ALT': [ALT],
+              'GGT': [GGT],
+              'PLT': [PLT],
+             }
+    )
     
     surv = rsf.predict_survival_function(X, return_array=True)
     
@@ -78,30 +84,34 @@ if submitted:
     st.image(temp_img_path)
     
     y_event = rsf.predict_survival_function(X, return_array=True).flatten()
-    HCC_incidence = 100 * (1 - y_event)
+    HCCincidence = 100 * (1 - y_event)
     
-    df_results = pd.DataFrame({
-        'Time (years)': rsf.unique_times_,
-        'HCC incidence (%)': HCC_incidence
-    })
+    df1 = pd.DataFrame(rsf.unique_times_)
+    df1.columns = ['timepoint (year)']
+    df2 = pd.DataFrame(HCCincidence)
+    df2.columns = ['predicted HCC incidence (%)']
+    df_merge = pd.concat([df1.reset_index(drop=True), df2.reset_index(drop=True)], axis=1)
     
     try:
-        one_year = round(df_results.iloc[174, 1], 3)
-        three_year = round(df_results.iloc[459, 1], 3)
-        five_year = round(df_results.iloc[740, 1], 3)
+        one0 = df_merge.iloc[174, 1]
+        one = round(one0, 3)
+        three0 = df_merge.iloc[459, 1]
+        three = round(three0, 3)
+        five0 = df_merge.iloc[740, 1]
+        five = round(five0, 3)
         
         st.subheader("Predicted HCC incidence")
         
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("1-year", f"{one_year}%")
+            st.metric("1-year", f"{one}%")
         with col2:
-            st.metric("3-year", f"{three_year}%")
+            st.metric("3-year", f"{three}%")
         with col3:
-            st.metric("5-year", f"{five_year}%")
+            st.metric("5-year", f"{five}%")
             
     except IndexError:
         st.warning("Unable to calculate specific time points")
     
     with st.expander("Detailed Results"):
-        st.dataframe(df_results.head(20))
+        st.dataframe(df_merge.head(20))
