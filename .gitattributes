@@ -1,0 +1,2 @@
+*.sav filter=lfs diff=lfs merge=lfs -text
+rsmmodel.sav filter=lfs diff=lfs merge=lfs -text
